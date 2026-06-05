@@ -55,8 +55,8 @@ echo ""
 
 snakemake -s Snakefile \
           --profile "$PROFILE_PATH" \
-          --jobs 15 \
-          --resources gsm_download_slots=1 star_slots=1 velocyto_slots=2 \
+          --jobs 6 \
+          --resources gsm_download_slots=4 star_slots=2 velocyto_slots=2 \
           --latency-wait 120
 
 echo ""
