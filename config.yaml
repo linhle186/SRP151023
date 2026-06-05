@@ -1,17 +1,24 @@
 # config.yaml
+# ---------------------------------------------------------------------
+# Dataset & Output Directories (Relative to project root)
+# ---------------------------------------------------------------------
 base_dir: "./data"
 srp_id: "SRP151023"
 pp_QC_dir: "./pp_QC"
-# References & Annotations (Matches your script configurations)
-genome_dir: "/home/hlinh/homo_ref/star_index_homo"
-gtf_file: "/home/hlinh/homo_ref/Homo_sapiens.GRCh38.115.gtf"
-mask_file: "/home/hlinh/homo_ref/hg38_repeat_masker.gtf"
-#solo_whitelist: None
-solo_whitelist_v2: "/home/hlinh/homo_ref/737K-august-2016.txt"
-solo_whitelist_v3: "/home/hlinh/homo_ref/3M-february-2018.txt"
+
+# ---------------------------------------------------------------------
+# References & Annotations (Matches Snakefile_prep outputs)
+# ---------------------------------------------------------------------
+genome_dir: "references/homo/star_index_homo"              # STAR index directory
+gtf_file: "references/homo/Homo_sapiens.GRCh38.115.gtf"    # .gtf file
+mask_file: "references/homo/hg38_repeat_masker.gtf"        # whitemask needed for STARsolo
+
+# Whitelists (Local relative paths)
+solo_whitelist_v2: "references/737K-august-2016.txt"       # Use if assay = 10x 3' v2
+solo_whitelist_v3: "references/3M-february-2018.txt"       # Use if assay = 10x 3' v3
 #snakemake -n -p -r
 
 #snakemake --profile /home/share/ag_klughammer/cluster_setup/snakemake_cluster_configs/slurm_nice \
 #          --jobs 15 \
-#          --resources download_slots=1 star_slots=1 velocyto_slots=2 \
+#          --resources download_slots=4 star_slots=2 velocyto_slots=2 \
 #          --latency-wait 120

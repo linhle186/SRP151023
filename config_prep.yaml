@@ -1,0 +1,13 @@
+# config_prep.yaml
+# ---------------------------------------------------------------------
+# Reference Preparation Configuration (Used by Snakefile_prepare)
+# ---------------------------------------------------------------------
+ref_dir: "references"   # Local folder where references will be built
+
+#snakemake -n -p -r
+
+#snakemake -s Snakefile_prep \
+#          --profile /home/share/ag_klughammer/cluster_setup/snakemake_cluster_configs/slurm_nice \
+#          --jobs 5 \
+#          --resources mem_mb=24000 \
+#          --latency-wait 120

@@ -1,0 +1,209 @@
+# Snakefile_prepare
+import os
+
+# Load configuration file variables
+configfile: "config_prep.yaml"
+
+REF_DIR = config.get("ref_dir", "references")
+REF_HOMO = os.path.join(REF_DIR, "homo")
+REF_MUS = os.path.join(REF_DIR, "mus")
+
+# --- HUMAN PATHS ---
+HUMAN_FASTA = os.path.join(REF_HOMO, "Homo_sapiens.GRCh38.dna.primary_assembly.fa")
+HUMAN_GTF = os.path.join(REF_HOMO, "Homo_sapiens.GRCh38.115.gtf")
+HUMAN_MASK = os.path.join(REF_HOMO, "hg38_repeat_masker.gtf")
+HUMAN_INDEX = os.path.join(REF_HOMO, "star_index_homo")
+
+# --- MOUSE PATHS ---
+MOUSE_FASTA = os.path.join(REF_MUS, "Mus_musculus.GRCm39.dna.primary_assembly.fa")
+MOUSE_GTF = os.path.join(REF_MUS, "Mus_musculus.GRCm39.115.gtf")
+MOUSE_MASK = os.path.join(REF_MUS, "mm39_repeat_masker.gtf")
+MOUSE_INDEX = os.path.join(REF_MUS, "star_index_mus")
+
+# --- 10X WHITELISTS ---
+WHITELIST_V2 = os.path.join(REF_DIR, "737K-august-2016.txt")
+WHITELIST_V3 = os.path.join(REF_DIR, "3M-february-2018.txt")
+
+
+# Target Rule: Demands both species references are compiled completely
+rule all:
+    input:
+        HUMAN_FASTA,
+        HUMAN_GTF,
+        HUMAN_MASK,
+        MOUSE_FASTA,
+        MOUSE_GTF,
+        MOUSE_MASK,
+        WHITELIST_V2,
+        WHITELIST_V3,
+        os.path.join(HUMAN_INDEX, "Genome"),
+        os.path.join(MOUSE_INDEX, "Genome")
+
+
+# =====================================================================
+# HUMAN REFERENCE RULES
+# =====================================================================
+
+rule download_human_fasta:
+    output:
+        HUMAN_FASTA
+    params:
+        url = "http://ftp.ensembl.org/pub/release-115/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
+        gz = HUMAN_FASTA + ".gz"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        wget -q -O {params.gz} '{params.url}'
+        gunzip -f {params.gz}
+        """
+
+
+rule download_human_gtf:
+    output:
+        HUMAN_GTF
+    params:
+        url = "http://ftp.ensembl.org/pub/release-115/gtf/homo_sapiens/Homo_sapiens.GRCh38.115.gtf.gz",
+        gz = HUMAN_GTF + ".gz"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        wget -q -O {params.gz} '{params.url}'
+        gunzip -f {params.gz}
+        """
+
+
+rule generate_human_mask:
+    output:
+        HUMAN_MASK
+    params:
+        url = "http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/rmsk.txt.gz",
+        gz = HUMAN_MASK + "_rmsk.txt.gz"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        wget -q -O {params.gz} '{params.url}'
+
+        # Convert UCSC rmsk.txt into GTF format on-the-fly (escaped for Snakemake)
+        zcat {params.gz} | awk 'BEGIN{{OFS="\\t"}}{{print $6,"RepeatMasker","exon",$7+1,$8,".",$10,".","gene_id \\""$12"\\"; transcript_id \\""$12"\\";"}}' > {output}
+
+        # Clean up raw download
+        rm -f {params.gz}
+        """
+
+
+rule generate_human_index:
+    input:
+        fasta = HUMAN_FASTA,
+        gtf = HUMAN_GTF
+    output:
+        os.path.join(HUMAN_INDEX, "Genome")
+    threads: 12
+    resources:
+        mem_mb = 24000,  # Request 120GB RAM
+        runtime = 600     # 10 hours in minutes
+    params:
+        index_dir = HUMAN_INDEX
+    shell:
+        """
+        mkdir -p {params.index_dir}
+        conda run -n scanpy_env STAR --runMode genomeGenerate \
+             --runThreadN {threads} \
+             --genomeDir {params.index_dir} \
+             --genomeFastaFiles {input.fasta} \
+             --sjdbGTFfile {input.gtf} \
+             --sjdbOverhang 99
+        """
+
+
+# =====================================================================
+# MOUSE REFERENCE RULES
+# =====================================================================
+
+rule download_mouse_fasta:
+    output:
+        MOUSE_FASTA
+    params:
+        url = "http://ftp.ensembl.org/pub/release-115/fasta/mus_musculus/dna/Mus_musculus.GRCm39.dna.primary_assembly.fa.gz",
+        gz = MOUSE_FASTA + ".gz"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        wget -q -O {params.gz} '{params.url}'
+        gunzip -f {params.gz}
+        """
+
+
+rule download_mouse_gtf:
+    output:
+        MOUSE_GTF
+    params:
+        url = "http://ftp.ensembl.org/pub/release-115/gtf/mus_musculus/Mus_musculus.GRCm39.115.gtf.gz",
+        gz = MOUSE_GTF + ".gz"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        wget -q -O {params.gz} '{params.url}'
+        gunzip -f {params.gz}
+        """
+
+
+rule generate_mouse_mask:
+    output:
+        MOUSE_MASK
+    params:
+        url = "http://hgdownload.soe.ucsc.edu/goldenPath/mm39/database/rmsk.txt.gz",
+        gz = MOUSE_MASK + "_rmsk.txt.gz"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        wget -q -O {params.gz} '{params.url}'
+
+        # Convert UCSC rmsk.txt into GTF format on-the-fly (escaped for Snakemake)
+        zcat {params.gz} | awk 'BEGIN{{OFS="\\t"}}{{print $6,"RepeatMasker","exon",$7+1,$8,".",$10,".","gene_id \\""$12"\\"; transcript_id \\""$12"\\";"}}' > {output}
+
+        # Clean up raw download
+        rm -f {params.gz}
+        """
+
+
+rule generate_mouse_index:
+    input:
+        fasta = MOUSE_FASTA,
+        gtf = MOUSE_GTF
+    output:
+        os.path.join(MOUSE_INDEX, "Genome")
+    threads: 12
+    resources:
+        mem_mb = 24000,  # Request 120GB RAM
+        runtime = 600     # 10 hours in minutes
+    params:
+        index_dir = MOUSE_INDEX
+    shell:
+        """
+        mkdir -p {params.index_dir}
+        conda run -n scanpy_env STAR --runMode genomeGenerate \
+             --runThreadN {threads} \
+             --genomeDir {params.index_dir} \
+             --genomeFastaFiles {input.fasta} \
+             --sjdbGTFfile {input.gtf} \
+             --sjdbOverhang 99
+        """
+
+
+# =====================================================================
+# SHARED 10X WHITELISTS
+# =====================================================================
+
+rule download_whitelists:
+    output:
+        v2 = WHITELIST_V2,
+        v3 = WHITELIST_V3
+    params:
+        url_v2 = "https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/737K-august-2016.txt",
+        url_v3 = "https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/3M-february-2018.txt"
+    shell:
+        """
+        mkdir -p $(dirname {output.v2})
+        wget -q -O {output.v2} '{params.url_v2}'
+        wget -q -O {output.v3} '{params.url_v3}'
+        """

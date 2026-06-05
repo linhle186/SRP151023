@@ -215,7 +215,7 @@ rule velocyto:
 # STEP 5: Aggregation & QC Step (Combines all resolved loom outputs)
 rule pp_qc:
     input:
-        looms = expand(os.path.join(BASE_DIR, f"{SRP_ID}_velocyto/{{gsm}}_velocyto/{{gsm}}_Aligned.sortedByCoord.out.loom")),
+        looms = expand(os.path.join(BASE_DIR, f"{SRP_ID}_velocyto/{{gsm}}_velocyto/{{gsm}}_Aligned.sortedByCoord.out.loom"), gsm=GSMS),
         script = f"data_pp_smk.py"
     output:
         h5ad = os.path.join(BASE_DIR, f"{SRP_ID}_processed.h5ad")
