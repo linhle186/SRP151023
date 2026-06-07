@@ -1,28 +1,12 @@
-#!/usr/bin/env bash
-# run_pipeline_conda.sh
-# ---------------------------------------------------------------------------
-# Snakemake-FREE version of the SRP151023 single-cell RNA-seq pipeline.
-# Everything runs inside one conda environment (scanpy_env) as a plain script.
-#
-# It reproduces, step for step, what Snakefile_prep + Snakefile do:
-#   STAGE 1  build human (+ optional mouse) references and STAR indexes
-#   STAGE 2  fetch SRA run table, map GSM -> SRRs
-#   STAGE 3  per sample: prefetch -> fasterq-dump -> STAR Solo -> velocyto
-#   STAGE 4  aggregate all looms -> QC -> {SRP}_processed.h5ad
-#
-# DESIGN / ASSUMPTIONS
-#   * Needs only `conda` on PATH -- NO snakemake, NO cluster profile.
-#   * Runs SERIALLY, on ONE machine/allocation. Launch it inside a SLURM job
-#     (or any Linux box) that has enough RAM for the heaviest step (velocyto,
-#     ~160 GB with the defaults below) and enough walltime, e.g.:
-#         sbatch --cpus-per-task=12 --mem=200G --time=5-00:00:00 \
-#                run_pipeline_conda.sh
-#   * RESUME-SAFE: every expensive step is guarded by an "output exists?" check,
-#     so re-running continues where it stopped instead of redoing finished work.
-#   * To run several samples at once on one big node, see the note at STAGE 3.
-#   * To fan out across nodes (what Snakemake's SLURM profile did), you'd submit
-#     one job per sample instead -- ask and I'll generate that variant.
-# ---------------------------------------------------------------------------
+#!/bin/bash
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=208GB
+#SBATCH --mail-user=gyu@genzentrum.lmu.de
+#SBATCH --mail-type=fail
+#SBATCH -o %j.log
+#SBATCH -e %j.err
+#SBATCH -J RNAvelo.pp.pipeline
+#SBATCH -t 5-00:00:00
 
 set -euo pipefail
 
@@ -55,7 +39,7 @@ DL_THREADS="${DL_THREADS:-4}"
 BUILD_MOUSE="${BUILD_MOUSE:-false}"
 
 echo "=========================================================="
-echo "   SRP151023 PIPELINE (conda-only, no Snakemake)"
+echo "   SRP151023 PIPELINE"
 echo "   $(date)   cwd=$(pwd)"
 echo "=========================================================="
 
@@ -67,6 +51,7 @@ if ! conda env list | grep -q "scanpy_env"; then
     echo "scanpy_env not found -> creating from environment.yml ..."
     conda env create -f environment.yml -n scanpy_env
 fi
+echo "Activating conda environment: scanpy_env"
 conda activate scanpy_env
 
 mkdir -p "$BASE_DIR" "$PP_QC_DIR"
@@ -82,6 +67,7 @@ dl_gunzip () {          # $1=url  $2=output (uncompressed)
     gunzip -f "${out}.gz"
 }
 
+echo "=========================================================="
 make_mask () {          # $1=url(rmsk.txt.gz)  $2=output.gtf
     local url="$1" out="$2"
     if [ -f "$out" ]; then echo "  [skip] $out"; return; fi

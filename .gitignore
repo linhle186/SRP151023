@@ -1,2 +1,6 @@
 *.err
 *.log
+references/*
+data/*
+pp_QC/*
+_STARtmp/*
