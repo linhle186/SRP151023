@@ -199,11 +199,18 @@ rule download_whitelists:
         v2 = WHITELIST_V2,
         v3 = WHITELIST_V3
     params:
-        url_v2 = "https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/737K-august-2016.txt",
-        url_v3 = "https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/3M-february-2018.txt"
+        url_v2 = "https://teichlab.github.io/scg_lib_structs/data/10X-Genomics/737K-august-2016.txt.gz",
+        url_v3 = "https://teichlab.github.io/scg_lib_structs/data/10X-Genomics/3M-february-2018.txt.gz"
     shell:
         """
+        # Ensure the references directory exists
         mkdir -p $(dirname {output.v2})
-        wget -q -O {output.v2} '{params.url_v2}'
-        wget -q -O {output.v3} '{params.url_v3}'
+
+        # Download the compressed whitelists
+        wget -q -O {params.v2_gz} '{params.url_v2}'
+        wget -q -O {params.v3_gz} '{params.url_v3}'
+
+        # Decompress the whitelists to raw .txt format
+        gunzip -f {params.v2_gz}
+        gunzip -f {params.v3_gz}
         """
